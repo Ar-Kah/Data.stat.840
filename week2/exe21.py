@@ -1,11 +1,7 @@
-import bs4
 import re
+
+import bs4
 import requests
-
-webpage_url = "https://www.tuni.fi/en/study-with-us/tampere-university-studies"
-webpage_html = requests.get(webpage_url)
-
-webpage_parsed = bs4.BeautifulSoup(webpage_html.content, 'html.parser')
 
 def getpagetext(parsedpage):
     # Remove HTML elements that are scripts
@@ -21,7 +17,7 @@ def getpagetext(parsedpage):
 
 
 def getpageurls(webpage_parsed):
- # Find elements that are hyperlinks
+    # Find elements that are hyperlinks
     pagelinkelements=webpage_parsed.find_all('a')
     # print(type( pagelinkelements[0].get('href') ))
     pageurls=[]
@@ -37,20 +33,22 @@ def getpageurls(webpage_parsed):
 
 
 
-def basicwebcrawler(seedpage_url,maxpages):
+def basicwebcrawler(seedpage_url, maxpages, max_links_from_page=10):
     # Store URLs crawled and their text content
     num_pages_crawled=0
     crawled_urls=[]
     crawled_texts=[]
+
     # Remaining pages to crawl: start from a seed page URL
     pagestocrawl=[seedpage_url]
+
     # Process remaining pages until a desired number
     # of pages have been found
     while (num_pages_crawled < maxpages) & (len(pagestocrawl) > 0):
         # Retrieve the topmost remaining page and parse it
         pagetocrawl_url=pagestocrawl[0]
 
-        #check if we have allready crawled the page
+        # check if we have allready crawled the page
         if pagetocrawl_url in crawled_urls:
             pagestocrawl.pop(0)
             continue
@@ -69,6 +67,9 @@ def basicwebcrawler(seedpage_url,maxpages):
         # Remove the processed page from remaining pages,
         # but add the new URLs
         pagestocrawl=pagestocrawl[1:len(pagestocrawl)]
+        if len(pagetocrawl_urls) > max_links_from_page:
+            pagetocrawl_urls = pagetocrawl_urls[0:max_links_from_page]
+
         pagestocrawl.extend(pagetocrawl_urls)
 
     print(f"number of crawled pages: { num_pages_crawled }")
