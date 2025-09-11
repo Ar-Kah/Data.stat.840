@@ -69,14 +69,13 @@ def main():
 
     # parsed document with bs4
     webpage_parsed = bs4.BeautifulSoup(webpage_html.content, 'html.parser')
-    urls = getbookurls(webpage_parsed, 1)
+    urls = getbookurls(webpage_parsed, 5)
 
     for url in urls:
         booktext_url = getbookcontents(url)
         print(f"Getting page: {booktext_url}")
         bookpage_html = requests.get(booktext_url)
         bookpage_parsed = bs4.BeautifulSoup(bookpage_html.content, 'html.parser')
-        print(bookpage_parsed)
 
 if __name__ == '__main__':
     main()
