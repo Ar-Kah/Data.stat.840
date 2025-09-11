@@ -18,15 +18,20 @@ def getbookcontents(url):
 
     webpage_html = requests.get(url)
     webpage_parsed = bs4.BeautifulSoup(webpage_html.content, 'html.parser')
+    elements = webpage_parsed.find_all('a')
 
-    text = getpagetext(webpage_parsed)
-    print(text)
+    for element in elements:
+        url = str(element.get('href'))
 
-def getpageurls(parsedpage, N=10):
-    """
-    @parsedpage: Parsed html documents using bs4
-    @N: amount of book to bee crawled
-    """
+        if re.search(".txt.utf-8", url):
+            txt_file_url = url
+
+    # ebook href is in the second index of the 'td' elements
+    prefix = "https://www.gutenberg.org"
+    return prefix + txt_file_url
+
+def getbookurls(parsedpage, N=10):
+
     urls = []
     # Get all of the list items
     all_bookelements = parsedpage.find_all('ol')
@@ -39,10 +44,11 @@ def getpageurls(parsedpage, N=10):
         if index >= N:
             break
 
-        posfix = "https://www.gutenberg.org"
+        prefix = "https://www.gutenberg.org"
 
         url = str(element.get('href'))
-        urls.append(posfix + url)
+        urls.append(prefix + url)
+
 
     return urls
 
@@ -63,10 +69,14 @@ def main():
 
     # parsed document with bs4
     webpage_parsed = bs4.BeautifulSoup(webpage_html.content, 'html.parser')
-    urls = getpageurls(webpage_parsed)
+    urls = getbookurls(webpage_parsed, 1)
 
-    getbookcontents(urls[0])
-
+    for url in urls:
+        booktext_url = getbookcontents(url)
+        print(f"Getting page: {booktext_url}")
+        bookpage_html = requests.get(booktext_url)
+        bookpage_parsed = bs4.BeautifulSoup(bookpage_html.content, 'html.parser')
+        print(bookpage_parsed)
 
 if __name__ == '__main__':
     main()
