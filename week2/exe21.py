@@ -1,4 +1,5 @@
 import bs4
+import re
 import requests
 
 webpage_url = "https://www.tuni.fi/en/study-with-us/tampere-university-studies"
@@ -22,23 +23,17 @@ def getpagetext(parsedpage):
 def getpageurls(webpage_parsed):
  # Find elements that are hyperlinks
     pagelinkelements=webpage_parsed.find_all('a')
-    pageurls=[];
+    # print(type( pagelinkelements[0].get('href') ))
+    pageurls=[]
     for pagelink in pagelinkelements:
-        pageurl_isok=1
-        try:
-            pageurl=pagelink['href']
-        except:
-            pageurl_isok=0
-        if pageurl_isok==1:
-            # Check that the url does NOT contain these strings
-            if (pageurl.find('.pdf')!=-1)|(pageurl.find('.ps')!=-1):
-                pageurl_isok=0
-            # Check that the url DOES contain these strings
-            if (pageurl.find('http')==-1)|(pageurl.find('.fi')==-1):
-                pageurl_isok=0
-        if pageurl_isok==1:
-            pageurls.append(pageurl)
-        return(pageurls)
+
+        crawled_url = str(pagelink.get('href'))
+
+        if re.search("^https:", crawled_url):
+            pageurls.append(crawled_url)
+
+
+    return(pageurls)
 
 
 
@@ -51,9 +46,15 @@ def basicwebcrawler(seedpage_url,maxpages):
     pagestocrawl=[seedpage_url]
     # Process remaining pages until a desired number
     # of pages have been found
-    while (num_pages_crawled<maxpages)&(len(pagestocrawl)>0):
+    while (num_pages_crawled < maxpages) & (len(pagestocrawl) > 0):
         # Retrieve the topmost remaining page and parse it
         pagetocrawl_url=pagestocrawl[0]
+
+        #check if we have allready crawled the page
+        if pagetocrawl_url in crawled_urls:
+            pagestocrawl.pop(0)
+            continue
+
         print('Getting page:')
         print(pagetocrawl_url)
         pagetocrawl_html=requests.get(pagetocrawl_url)
@@ -69,18 +70,15 @@ def basicwebcrawler(seedpage_url,maxpages):
         # but add the new URLs
         pagestocrawl=pagestocrawl[1:len(pagestocrawl)]
         pagestocrawl.extend(pagetocrawl_urls)
+
+    print(f"number of crawled pages: { num_pages_crawled }")
     return(crawled_urls,crawled_texts)
 
 def main():
     #mywebpage_url='https://www.tuni.fi/en/'
-    mywebpage_url='https://www.sis.uta.fi/~tojape/'
-    mywebpage_html=requests.get(mywebpage_url)
-    #%% Parse the HTML content using beautifulsoup
-    import bs4
-    mywebpage_parsed=bs4.BeautifulSoup(mywebpage_html.content,'html.parser')
-    mycrawled_urls_and_texts=basicwebcrawler(mywebpage_url, 10)
-    for line in mycrawled_urls_and_texts[1]:
-        print(line)
+    mywebpage_url='https://www.w3schools.com/html/html_links.asp'
+
+    mycrawled_urls_and_texts=basicwebcrawler(mywebpage_url, 30)
 
 if __name__ == '__main__':
     main()
