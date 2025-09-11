@@ -1,6 +1,4 @@
 import numpy as np
-from scipy.stats import multivariate_normal
-
 
 def multivariate_gaussian_distribution(mu, Sigma, evaluation_locations):
     d = len(mu)
