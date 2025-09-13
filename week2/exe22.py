@@ -1,3 +1,5 @@
+import nltk
+from pathlib import Path
 import re
 import bs4
 import requests
@@ -24,7 +26,8 @@ def getbooktext(parsedpage):
 
     # Write the book contents into a .txt file in book
     with open(f"books/{book_title}.txt", "w") as file:
-        print(f"Writing book contents into file: book/{book_title}")
+        print(f"Writing book contents into file: book/{book_title}.txt")
+        print("")
         file.write(''.join(book_contents))
         file.close()
 
@@ -79,6 +82,34 @@ def getbookurls(parsedpage, N=10):
 
     return urls
 
+
+def cleanuptext(text):
+    stripped_text = text.strip()
+    stripped_text = stripped_text.strip("[]_ *")
+    stripped_text = " ".join(stripped_text.split())
+    return stripped_text
+
+def wordprssessing():
+
+    directory = Path("/home/omakone3/Programming/Data.stat.840/week2/books/")
+
+    nltk.download('punkt')
+    sentenceSplitter=nltk.data.load('tokenizers/punkt/english.pickle')
+
+    for number, txt_file in enumerate(directory.glob("*.txt")):
+        if number == 2:
+            break
+        # Open .txt file to start word prossessing
+        print(f"Opening file: {txt_file.name}")
+        with open(txt_file, 'r') as file:
+            text = file.read()
+            clean_text = cleanuptext(text)
+            jees = sentenceSplitter(clean_text)
+            for x, jou in enumerate(jees):
+                if x == 1000:
+                    break
+                print(jou)
+
 def main():
     """
     This is the exercise 2.2 from the course Data.stat.840.
@@ -91,19 +122,23 @@ def main():
     """
 
     # save the url of Project Gutenbergs top ebooks
-    webpage_url = 'https://www.gutenberg.org/browse/scores/top'
-    webpage_html = requests.get(webpage_url)
+    # webpage_url = 'https://www.gutenberg.org/browse/scores/top'
+    # webpage_html = requests.get(webpage_url)
 
-    # parsed document with bs4
-    webpage_parsed = bs4.BeautifulSoup(webpage_html.content, 'html.parser')
-    urls = getbookurls(webpage_parsed, 1)
+    # # parsed document with bs4
+    # webpage_parsed = bs4.BeautifulSoup(webpage_html.content, 'html.parser')
+    # urls = getbookurls(webpage_parsed, 20)
 
-    for url in urls:
-        booktext_url = getbookcontents(url)
-        print(f"Getting page: {booktext_url}")
-        bookpage_html = requests.get(booktext_url)
-        bookpage_parsed = bs4.BeautifulSoup(bookpage_html.content, 'html.parser')
-        getbooktext(bookpage_parsed)
+    # for url in urls:
+    #     booktext_url = getbookcontents(url)
+    #     print(f"Getting page: {booktext_url}")
+    #     bookpage_html = requests.get(booktext_url)
+    #     bookpage_parsed = bs4.BeautifulSoup(bookpage_html.content, 'html.parser')
+    #     # Save the book contents into txt files
+    #     getbooktext(bookpage_parsed)
+
+    # Handle word prossesing
+    wordprssessing()
 
 if __name__ == '__main__':
     main()
