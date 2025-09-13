@@ -2,6 +2,33 @@ import re
 import bs4
 import requests
 
+def getbooktext(parsedpage):
+    book_split = str(parsedpage).split("\n")
+
+    book_title = ""
+    start_index = 0
+    end_index = len(book_split)
+
+    for number, line in enumerate(book_split):
+        if re.search("START OF THE PROJECT GUTENBERG EBOOK", line):
+            start_index = number + 1  # start after this line
+        elif re.search("END OF THE PROJECT GUTENBERG EBOOK", line):
+            end_index = number       # end before this line
+            break
+        elif re.search("Title:", line):
+            split_line = line.split()
+            split_line = split_line[1:len(split_line)]
+            book_title = ''.join(split_line)
+
+    book_contents = book_split[start_index:end_index]
+
+    # Write the book contents into a .txt file in book
+    with open(f"books/{book_title}.txt", "w") as file:
+        print(f"Writing book contents into file: book/{book_title}")
+        file.write(''.join(book_contents))
+        file.close()
+
+
 def getpagetext(parsedpage):
     # Remove HTML elements that are scripts
     scriptelements=parsedpage.find_all('script')
@@ -69,13 +96,14 @@ def main():
 
     # parsed document with bs4
     webpage_parsed = bs4.BeautifulSoup(webpage_html.content, 'html.parser')
-    urls = getbookurls(webpage_parsed, 5)
+    urls = getbookurls(webpage_parsed, 1)
 
     for url in urls:
         booktext_url = getbookcontents(url)
         print(f"Getting page: {booktext_url}")
         bookpage_html = requests.get(booktext_url)
         bookpage_parsed = bs4.BeautifulSoup(bookpage_html.content, 'html.parser')
+        getbooktext(bookpage_parsed)
 
 if __name__ == '__main__':
     main()
