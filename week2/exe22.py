@@ -145,8 +145,6 @@ def wordprssessing():
 
     crawled_nltktexts = []
     for number, txt_file in enumerate(directory.glob("*.txt")):
-        if number == 1:
-            break
         # Open .txt file to start word prossessing
         print(f"Opening file: {txt_file.name}")
         with open(txt_file, 'r') as file:
@@ -171,9 +169,9 @@ def main():
     @omakone3@archlinux
     """
 
-    nltk.download('wordnet')
-    nltk.download('punkt')
-    # save the url of Project Gutenbergs top ebooks
+    # nltk.download('wordnet')
+    # nltk.download('punkt')
+    # # save the url of Project Gutenbergs top ebooks
     # webpage_url = 'https://www.gutenberg.org/browse/scores/top'
     # webpage_html = requests.get(webpage_url)
 
@@ -197,7 +195,8 @@ def main():
     nltktexts = wordprssessing()
 
     crawled_lematizedtexts = []
-    for nltktext in nltktexts:
+    for index, nltktext in enumerate(nltktexts):
+        print(f"lematizing index: {index}")
         lematizedtext = lematizetext(nltktext)
         lematizedtext = nltk.Text(lematizedtext)
         crawled_lematizedtexts.append(lematizedtext)
@@ -205,7 +204,8 @@ def main():
     vocabularies = []
     indicies_in_vocabularies = []
 
-    for lematized in crawled_lematizedtexts:
+    for index, lematized in enumerate(crawled_lematizedtexts):
+        print(f"words and there indeses in index: {index}")
         uniqueresults = np.unique(lematized, return_inverse=True)
         uniquewords = uniqueresults[0]
         wordindices=uniqueresults[1]
@@ -214,11 +214,13 @@ def main():
 
     # Unify vocabulary into big vocab
     tempvocabulary=[]
+    print("Appending vocabulary into big vocab")
     for k in range(len(crawled_lematizedtexts)):
         tempvocabulary.extend(vocabularies[k])
         # Find the unique elements among all vocabularies
     uniqueresults=np.unique(tempvocabulary, return_inverse=True)
     del(tempvocabulary)
+
     unifiedvocabulary=uniqueresults[0]
     wordindices=uniqueresults[1]
 
@@ -236,7 +238,64 @@ def main():
         indices_in_unifiedvocabulary.append(tempindices)
         vocabularystart=vocabularystart+len(vocabularies[k])
 
-    print(unifiedvocabulary[1000:1020])
+
+    unifiedvocabulary_totaloccurrencecounts=np.zeros((len(unifiedvocabulary),1))
+    unifiedvocabulary_documentcounts=np.zeros((len(unifiedvocabulary),1))
+    unifiedvocabulary_meancounts=np.zeros((len(unifiedvocabulary),1))
+    unifiedvocabulary_countvariances=np.zeros((len(unifiedvocabulary),1))
+
+
+    # First pass: count occurrences
+    for k in range(len(crawled_lematizedtexts)):
+        occurrencecounts=np.zeros((len(unifiedvocabulary),1))
+        occurrencecounts = np.bincount(indices_in_unifiedvocabulary[k],
+                                    minlength=len(unifiedvocabulary)).reshape(-1, 1)
+        unifiedvocabulary_totaloccurrencecounts= \
+            unifiedvocabulary_totaloccurrencecounts+occurrencecounts
+        unifiedvocabulary_documentcounts= \
+            unifiedvocabulary_documentcounts+(occurrencecounts>0)
+    # Mean occurrence counts over documents
+    unifiedvocabulary_meancounts= \
+    unifiedvocabulary_totaloccurrencecounts/len(crawled_lematizedtexts)
+
+    # Second pass to count variances
+    for k in range(len(crawled_lematizedtexts)):
+        occurrencecounts=np.zeros((len(unifiedvocabulary),1))
+        occurrencecounts = np.bincount(indices_in_unifiedvocabulary[k],
+                                    minlength=len(unifiedvocabulary)).reshape(-1, 1)
+        unifiedvocabulary_countvariances=unifiedvocabulary_countvariances+ \
+            (occurrencecounts-unifiedvocabulary_meancounts)**2
+    unifiedvocabulary_countvariances= \
+        unifiedvocabulary_countvariances/(len(crawled_lematizedtexts)-1)
+
+    highest_totaloccurrences_indices=np.argsort(\
+        -1*unifiedvocabulary_totaloccurrencecounts,axis=0)
+    print(np.squeeze(unifiedvocabulary[\
+        highest_totaloccurrences_indices[0:100]]))
+    print(np.squeeze(\
+        unifiedvocabulary_totaloccurrencecounts[\
+        highest_totaloccurrences_indices[0:100]]))
+
+
+    #%% Make a frequency plot of the words
+    # Import the plotting library
+    import matplotlib.pyplot
+    # Tell the library we want each plot in its own window
+    # Create a figure and an axis
+    myfigure, myaxes = matplotlib.pyplot.subplots()
+    # Plot the sorted occurrence counts of the words against their ranks
+    horizontalpositions=range(len(unifiedvocabulary))
+    verticalpositions=np.squeeze(unifiedvocabulary_totaloccurrencecounts[\
+    highest_totaloccurrences_indices])
+    myaxes.plot(horizontalpositions,verticalpositions)
+    # Plot the top-500 occurrence counts of the words against their ranks
+    myfigure, myaxes = matplotlib.pyplot.subplots()
+    horizontalpositions=range(500)
+    verticalpositions=np.squeeze(unifiedvocabulary_totaloccurrencecounts[\
+    highest_totaloccurrences_indices[0:500]])
+    myaxes.plot(horizontalpositions,verticalpositions)
+
+    matplotlib.pyplot.show()
 
 if __name__ == '__main__':
     main()
