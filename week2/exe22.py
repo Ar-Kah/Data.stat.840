@@ -311,7 +311,7 @@ def main():
     r, probs = zipf_curve(a, 500)
     probs_scaled = probs * np.sum(verticalpositions)
     matplotlib.pyplot.plot(r, probs_scaled, 'r-', label=f"Zipf a={a}")
-
+    matplotlib.pyplot.legend()
 
     matplotlib.pyplot.show()
 
