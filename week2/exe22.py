@@ -1,4 +1,5 @@
 from tqdm import tqdm
+import matplotlib.pyplot
 import numpy as np
 import nltk
 from pathlib import Path
@@ -138,6 +139,14 @@ def lematizetext(nltktexttolemmatize):
         # Store the lemmatized word
         lemmatizedtext.append(lemmatizedword)
     return(lemmatizedtext)
+
+
+def zipf_curve(a, N):
+    ranks = np.arange(1, N+1)
+    harmonic = np.sum(1.0 / (ranks ** a))
+    probs = (1.0 / (ranks ** a)) / harmonic
+    return ranks, probs
+
 
 def wordprssessing():
 
@@ -282,9 +291,6 @@ def main():
         highest_totaloccurrences_indices[0:100]]))
 
 
-    #%% Make a frequency plot of the words
-    # Import the plotting library
-    import matplotlib.pyplot
     # Tell the library we want each plot in its own window
     # Create a figure and an axis
     myfigure, myaxes = matplotlib.pyplot.subplots()
@@ -298,7 +304,14 @@ def main():
     horizontalpositions=range(500)
     verticalpositions=np.squeeze(unifiedvocabulary_totaloccurrencecounts[\
     highest_totaloccurrences_indices[0:500]])
-    myaxes.plot(horizontalpositions,verticalpositions)
+    myaxes.plot(horizontalpositions,verticalpositions, label="Data")
+
+    # Plot zifp's law
+    a = 1.1
+    r, probs = zipf_curve(a, 500)
+    probs_scaled = probs * np.sum(verticalpositions)
+    matplotlib.pyplot.plot(r, probs_scaled, 'r-', label=f"Zipf a={a}")
+
 
     matplotlib.pyplot.show()
 
