@@ -179,23 +179,34 @@ def main():
     @omakone3@archlinux
     """
 
-    # nltk.download('wordnet')
-    # nltk.download('punkt')
-    # # save the url of Project Gutenbergs top ebooks
-    # webpage_url = 'https://www.gutenberg.org/browse/scores/top'
-    # webpage_html = requests.get(webpage_url)
+    nltk.download('wordnet')
+    nltk.download('punkt')
+    # save the url of Project Gutenbergs top ebooks
+    webpage_url = 'https://www.gutenberg.org/browse/scores/top'
+    webpage_html = requests.get(webpage_url)
 
-    # # parsed document with bs4
-    # webpage_parsed = bs4.BeautifulSoup(webpage_html.content, 'html.parser')
-    # urls = getbookurls(webpage_parsed, 20)
+    # parsed document with bs4
+    webpage_parsed = bs4.BeautifulSoup(webpage_html.content, 'html.parser')
+    urls = getbookurls(webpage_parsed, 20)
 
-    # for url in urls:
-    #     booktext_url = getbookcontents(url)
-    #     print(f"Getting page: {booktext_url}")
-    #     bookpage_html = requests.get(booktext_url)
-    #     bookpage_parsed = bs4.BeautifulSoup(bookpage_html.content, 'html.parser')
-    #     # Save the book contents into txt files
-    #     getbooktext(bookpage_parsed)
+
+    print()
+    print("All crawled books will be saved in directory books.")
+    while True:
+        print("Do you want to download the books? (y / n)")
+        answer = input()
+        if answer == 'y':
+            break
+        elif answer == 'n':
+            return
+
+    for url in urls:
+        booktext_url = getbookcontents(url)
+        print(f"Getting page: {booktext_url}")
+        bookpage_html = requests.get(booktext_url)
+        bookpage_parsed = bs4.BeautifulSoup(bookpage_html.content, 'html.parser')
+        # Save the book contents into txt files
+        getbooktext(bookpage_parsed)
 
     # Here whe already have saved the top N books into local memory to save some RAM.
     # By calling the word prossessing we go through the book contents and prosses the
