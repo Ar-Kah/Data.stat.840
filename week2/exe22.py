@@ -1,3 +1,4 @@
+from tqdm import tqdm
 import numpy as np
 import nltk
 from pathlib import Path
@@ -193,31 +194,34 @@ def main():
     # be in nltk Text format.
     nltk.download('averaged_perceptron_tagger_eng')
     nltktexts = wordprssessing()
+    print()
 
     crawled_lematizedtexts = []
-    for index, nltktext in enumerate(nltktexts):
-        print(f"lematizing index: {index}")
+    print("Lematizing all texts")
+    for index, nltktext in enumerate(tqdm(nltktexts)):
         lematizedtext = lematizetext(nltktext)
         lematizedtext = nltk.Text(lematizedtext)
         crawled_lematizedtexts.append(lematizedtext)
-
+    print()
     vocabularies = []
     indicies_in_vocabularies = []
 
-    for index, lematized in enumerate(crawled_lematizedtexts):
-        print(f"words and there indeses in index: {index}")
+    print("Find Unique words and their indicies")
+    for index, lematized in enumerate(tqdm(crawled_lematizedtexts)):
         uniqueresults = np.unique(lematized, return_inverse=True)
         uniquewords = uniqueresults[0]
         wordindices=uniqueresults[1]
         vocabularies.append(uniquewords)
         indicies_in_vocabularies.append(wordindices)
 
+    print()
     # Unify vocabulary into big vocab
     tempvocabulary=[]
     print("Appending vocabulary into big vocab")
-    for k in range(len(crawled_lematizedtexts)):
+    for k in tqdm(range(len(crawled_lematizedtexts))):
         tempvocabulary.extend(vocabularies[k])
         # Find the unique elements among all vocabularies
+    print()
     uniqueresults=np.unique(tempvocabulary, return_inverse=True)
     del(tempvocabulary)
 
@@ -229,7 +233,8 @@ def main():
     # the concatenated one.
     vocabularystart=0
     indices_in_unifiedvocabulary=[]
-    for k in range(len(crawled_lematizedtexts)):
+    print("")
+    for k in tqdm(range(len(crawled_lematizedtexts))):
         # In order to shift word indices, we must temporarily
         # change their data type to a Numpy array
         tempindices=np.array(indicies_in_vocabularies[k])
