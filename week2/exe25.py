@@ -173,7 +173,7 @@ def process_text(nltktext):
     lemmatized = lematizetext(nltktext)
     return nltk.Text(lemmatized)
 
-def prune_text(vocabulary, highest_totaloccurrences_indeces, unifiedvocabulary_totaloccurrencecounts):
+def prune_text(vocabulary, highest_totaloccurrences_indeces ):
     english_stopwords = nltk.corpus.stopwords.words('english')
     pruning_desition = np.zeros((len(vocabulary), 1))
 
@@ -191,7 +191,7 @@ def prune_text(vocabulary, highest_totaloccurrences_indeces, unifiedvocabulary_t
             0:int(np.floor(len(vocabulary)*0.01))]):
             pruning_desition[index] = 1
 
-        elif unifiedvocabulary_totaloccurrencecounts[highest_totaloccurrences_indeces[index]] < 4:
+        elif highest_totaloccurrences_indeces[index] < 4:
             pruning_desition[index] = 1
 
     return pruning_desition

@@ -99,10 +99,11 @@ def main():
 
     lemmatized_nltktext = lematizetext(nltk_text)
     lemmatized_nltktext=nltk.Text(lemmatized_nltktext)
+    # Returns a matplotlib plot
     nltk.draw.dispersion_plot(lemmatized_nltktext, ['pride', 'prejudice', 'elizabeth', 'darcy', 'charlotte',
-                                                    'love', 'hate', 'marriage', 'husband', 'wife', 'fateher',
+                                                    'love', 'hate', 'marriage', 'husband', 'wife', 'father',
                                                     'mother', 'daughter', 'family', 'dance', 'happy'],
-                                title='Lexical disperison plot')
+                            title='Lexical disperison plot')
     plt.show()
     # end of main
 
