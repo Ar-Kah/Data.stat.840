@@ -182,16 +182,23 @@ def main():
     # Word occurrences 
     # ------------------------------------------
 
-    unifiedvocabulary_totaloccurrencecounts=np.zeros((len(vocabulary),1))
-    unifiedvocabulary_meancounts=np.zeros((len(vocabulary),1))
-    unifiedvocabulary_countvariances=np.zeros((len(vocabulary),1))
+    vocabulary_totaloccurrencecounts=np.zeros((len(vocabulary),1))
+    vocabulary_meancounts=np.zeros((len(vocabulary),1))
+    vocabulary_countvariances=np.zeros((len(vocabulary),1))
 
-    unifiedvocabulary_totaloccurrencecounts = np.bincount(text_in_indices, minlength=len(vocabulary))
-    unifiedvocabulary_meancounts = unifiedvocabulary_totaloccurrencecounts / len(text_in_indices)
+    vocabulary_totaloccurrencecounts = np.bincount(text_in_indices, minlength=len(vocabulary))
+    vocabulary_meancounts = vocabulary_totaloccurrencecounts / len(text_in_indices)
+
+    vocabulary_countvariances = (len(vocabulary) - vocabulary_meancounts) ** 2
+
+    highest_occurring_words = np.argsort(-1 * vocabulary_totaloccurrencecounts) # multiply bu -1 to get the most frequent
 
 
-    highest_occurring_words = np.argsort(-1 * unifiedvocabulary_totaloccurrencecounts)
-    print(vocabulary[highest_occurring_words[0:20]])
+    # Word pruning
+    # -----------------------------------------
+    
+
+    
 
 
     # Word pair occurance counting
