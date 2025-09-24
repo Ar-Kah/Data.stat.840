@@ -172,10 +172,10 @@ def prune_text(vocabulary, highest_totaloccurrences_indeces):
             pruning_desition[index] = 1
 
         elif (index in highest_totaloccurrences_indeces[\
-            0:int(np.floor(len(vocabulary)*0.01))]):
+            0:int(np.floor(len(vocabulary)*0.001))]):
             pruning_desition[index] = 1
 
-        elif highest_totaloccurrences_indeces[index] < 4:
+        elif highest_totaloccurrences_indeces[index] < 2:
             pruning_desition[index] = 1
 
     return pruning_desition
@@ -236,22 +236,23 @@ def main():
     pruning_decision = prune_text(vocabulary, highest_totaloccurrences_indices)
 
     remainingindices = np.where(pruning_decision==0)[0]
-    # Map old indices to new ones in the remaingn vocabulary
+
+    # Map old indices to new ones in the remaining vocabulary
     old_to_new = -1 * np.ones(len(vocabulary), dtype=int)
     for new_idx, old_idx in enumerate(remainingindices):
         old_to_new[old_idx] = new_idx
 
-    remapped_indices = [old_to_new[i] for i in remainingindices if old_to_new[i] != -1]
-    remainingvocabulary=vocabulary[remapped_indices]
+    # Remap the text sequence to pruned vocabulary indices
+    remapped_text_in_indices = [old_to_new[i] for i in text_in_indices if old_to_new[i] != -1]
 
-    remainingvocabulary_totaloccurrencecounts= \
-        vocabulary_totaloccurrencecounts[remainingindices]
-    remaining_highest_totaloccurrences_indices= \
-        np.argsort(-1*remainingvocabulary_totaloccurrencecounts,axis=0)
+    # Correct: slice vocabulary using remainingindices
+    remainingvocabulary = vocabulary[remainingindices]
+
+    remainingvocabulary_totaloccurrencecounts = vocabulary_totaloccurrencecounts[remainingindices]
+    remaining_highest_totaloccurrences_indices = np.argsort(-1 * remainingvocabulary_totaloccurrencecounts, axis=0)
+
     print(np.squeeze(remainingvocabulary[remaining_highest_totaloccurrences_indices[0:100]]))
-    print(np.squeeze(remainingvocabulary_totaloccurrencecounts[
-        remaining_highest_totaloccurrences_indices[0:100]
-    ]))
+    print(np.squeeze(remainingvocabulary_totaloccurrencecounts[remaining_highest_totaloccurrences_indices[0:100]]))
             
 
     # Word pair occurance counting
@@ -265,7 +266,7 @@ def main():
 
     latestoccurencepositions = scipy.sparse.lil_matrix((vocab_size, vocab_size), dtype=np.float32)
 
-    count_word_pair_occurances(remapped_indices, latestoccurencepositions, distanceoccurrences,
+    count_word_pair_occurances(remapped_text_in_indices, latestoccurencepositions, distanceoccurrences,
                      sumdistances, sumabsdistances, sumdistancesquares)
 
 
