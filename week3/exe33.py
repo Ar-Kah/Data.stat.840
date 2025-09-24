@@ -33,11 +33,11 @@ def compute_p_values(n_vocab, distanceoccurrences, absdistancemeans, absdistance
         absdistancepvalues[m,tempindices]=np.squeeze(np.array(temppvalue))
 
 
-def print_to_p_collections(wordstring, distanceoccurrences, absdistancepvalues, remainingvocabulary,
-                            absdistancemeans, absdistancevariances, distancemeans, distancevariances):
+def print_top_p_collections(wordstring, distanceoccurrences, absdistancepvalues, remainingvocabulary,
+                            absdistancemeans, absdistancevariances, distancemeans, distancevariances, wordarray):
 
     # Find the chosen word and words that occurred with it at least 2 times
-    mywordindex=findwordindex(wordstring)
+    mywordindex=findwordindex(wordstring, wordarray)
     if mywordindex==-1:
         print('Word not found: '+wordstring)
         return
@@ -109,6 +109,7 @@ def count_word_pair_occurances(textinindicies, latestoccurencepositions, distanc
             previousword = textinindicies[index - x - 1]
 
             if latestoccurencepositions[currentword, previousword] < index:
+
                 distanceoccurrences[currentword, previousword] += 1
                 sumdistances[currentword, previousword] += ((index - x - 1) - index)
                 sumabsdistances[currentword, previousword] += abs((index - x - 1) - index)
@@ -156,6 +157,30 @@ def print_N_lowestmeandistance(N, absdistancemeans, distanceoccurrences, words):
     # -----------------------------------
 
 
+def prune_text(vocabulary, highest_totaloccurrences_indeces):
+    english_stopwords = nltk.corpus.stopwords.words('english')
+    pruning_desition = np.zeros((len(vocabulary), 1), dtype=bool)
+
+    for index in range(len(vocabulary)):
+        if vocabulary[index] in english_stopwords:
+            pruning_desition[index] = 1
+
+        elif len(vocabulary[index]) < 2:
+            pruning_desition[index] = 1
+
+        elif len(vocabulary[index]) > 20:
+            pruning_desition[index] = 1
+
+        elif (index in highest_totaloccurrences_indeces[\
+            0:int(np.floor(len(vocabulary)*0.01))]):
+            pruning_desition[index] = 1
+
+        elif highest_totaloccurrences_indeces[index] < 4:
+            pruning_desition[index] = 1
+
+    return pruning_desition
+
+
 def main():
 
     # Retreve book contents and manipulate text
@@ -186,25 +211,53 @@ def main():
     vocabulary_meancounts=np.zeros((len(vocabulary),1))
     vocabulary_countvariances=np.zeros((len(vocabulary),1))
 
+    # vocabulary_totaloccurrencescounts is a variable that has stored the count of the
+    # word/index in the doccument (in this occation the book) so lets say the
+    # word "book" is in index "0" vocabulary_totaloccurrencescounts will return the
+    # occurence count of that word in index 0
     vocabulary_totaloccurrencecounts = np.bincount(text_in_indices, minlength=len(vocabulary))
     vocabulary_meancounts = vocabulary_totaloccurrencecounts / len(text_in_indices)
 
     vocabulary_countvariances = (len(vocabulary) - vocabulary_meancounts) ** 2
 
-    highest_occurring_words = np.argsort(-1 * vocabulary_totaloccurrencecounts) # multiply bu -1 to get the most frequent
+    # highest_totaloccurrences_indices is a variable that has stored the word/index that
+    # occured the most in the document
+    highest_totaloccurrences_indices = np.argsort(-1 * vocabulary_totaloccurrencecounts) # multiply bu -1 to get the most frequent
+
+    # these lines of code will print the 100 most common words and the occurence counts
+    # print(np.squeeze(vocabulary[highest_totaloccurrences_indices[0:100]]))
+    # print(np.squeeze(vocabulary_totaloccurrencecounts[highest_totaloccurrences_indices[0:100]]))
 
 
     # Word pruning
     # -----------------------------------------
     
+    print("Prune vocabulary\n")
+    pruning_decision = prune_text(vocabulary, highest_totaloccurrences_indices)
 
-    
+    remainingindices = np.where(pruning_decision==0)[0]
+    # Map old indices to new ones in the remaingn vocabulary
+    old_to_new = -1 * np.ones(len(vocabulary), dtype=int)
+    for new_idx, old_idx in enumerate(remainingindices):
+        old_to_new[old_idx] = new_idx
 
+    remapped_indices = [old_to_new[i] for i in remainingindices if old_to_new[i] != -1]
+    remainingvocabulary=vocabulary[remapped_indices]
+
+    remainingvocabulary_totaloccurrencecounts= \
+        vocabulary_totaloccurrencecounts[remainingindices]
+    remaining_highest_totaloccurrences_indices= \
+        np.argsort(-1*remainingvocabulary_totaloccurrencecounts,axis=0)
+    print(np.squeeze(remainingvocabulary[remaining_highest_totaloccurrences_indices[0:100]]))
+    print(np.squeeze(remainingvocabulary_totaloccurrencecounts[
+        remaining_highest_totaloccurrences_indices[0:100]
+    ]))
+            
 
     # Word pair occurance counting
     # ------------------------------------------
 
-    vocab_size = len(text_in_indices)
+    vocab_size = len(remainingvocabulary)
     distanceoccurrences = scipy.sparse.lil_matrix((vocab_size, vocab_size), dtype=np.float32)
     sumdistances = scipy.sparse.lil_matrix((vocab_size, vocab_size), dtype=np.float32)
     sumabsdistances = scipy.sparse.lil_matrix((vocab_size, vocab_size), dtype=np.float32)
@@ -212,7 +265,7 @@ def main():
 
     latestoccurencepositions = scipy.sparse.lil_matrix((vocab_size, vocab_size), dtype=np.float32)
 
-    count_word_pair_occurances(text_in_indices, latestoccurencepositions, distanceoccurrences,
+    count_word_pair_occurances(remapped_indices, latestoccurencepositions, distanceoccurrences,
                      sumdistances, sumabsdistances, sumdistancesquares)
 
 
@@ -233,25 +286,29 @@ def main():
     overalldistancesquaresum=np.sum(sumdistancesquares)
     overalldistancemean=overalldistancesum / overalldistancecount
     overallabsdistancemean=overallabsdistancesum / overalldistancecount
-    overalldistancevariance=overalldistancesquaresum / (overalldistancecount-1) - overalldistancecount / (overalldistancecount - 1) * overalldistancemean
-    overallabsdistancevariance=overalldistancesquaresum / (overalldistancecount-1) - overalldistancecount/(overalldistancecount - 1) * overallabsdistancemean
+    overalldistancevariance=overalldistancesquaresum / (overalldistancecount-1) -\
+                                overalldistancecount / (overalldistancecount - 1) * overalldistancemean
+    overallabsdistancevariance=overalldistancesquaresum / (overalldistancecount-1) -\
+                                overalldistancecount/(overalldistancecount - 1) * overallabsdistancemean
 
 
-    mywordindex=findwordindex('dog', vocabulary)
+    mywordindex=findwordindex('foot', remainingvocabulary)
     tempindices=np.nonzero(distanceoccurrences[mywordindex,:]>1)[1]
     # Sort the pairs by lowest mean absolute distance
     lowest_meandistances_indices=np.argsort(np.squeeze(np.array(\
         absdistancemeans[mywordindex,tempindices].todense())),axis=0)
-
     N = 20
     # Print n lowest meandistance indices
-    print_N_lowestmeandistance(N, absdistancemeans, distanceoccurrences, vocabulary)
+    print_N_lowestmeandistance(N, absdistancemeans, distanceoccurrences, remainingvocabulary)
 
-    # absdistancepvalues = scipy.sparse.lil_matrix((vocab_size, vocab_size))
+    absdistancepvalues = scipy.sparse.lil_matrix((vocab_size, vocab_size))
 
-    # compute_p_values(vocab_size, distanceoccurrences, absdistancemeans, absdistancevariances, overallabsdistancemean,
-    #                     overallabsdistancevariance, overalldistancecount, absdistancepvalues)
+    compute_p_values(vocab_size, distanceoccurrences, absdistancemeans, absdistancevariances, overallabsdistancemean,
+                        overallabsdistancevariance, overalldistancecount, absdistancepvalues)
 
+    print_top_p_collections('dog', distanceoccurrences, absdistancepvalues, remainingvocabulary,
+                            absdistancemeans, absdistancevariances, distancemeans,
+                            distancevariances, remainingvocabulary)
 
     # ----------------------------------------------------
     # End of main
