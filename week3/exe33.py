@@ -152,6 +152,9 @@ def print_N_lowestmeandistance(N, absdistancemeans, distanceoccurrences, words):
     for word_i, word_j, mean_d in top_N_pairs:
         print(words[word_i], words[word_j], mean_d)
 
+    # End of print_N_lowestmeandistance
+    # -----------------------------------
+
 
 def main():
 
@@ -176,12 +179,19 @@ def main():
     vocabulary = uniqueresults[0]
     text_in_indices = uniqueresults[1]
 
-    #TODO calculate teh occurrances and
-    # with that prune the text
+    # Word occurrences 
+    # ------------------------------------------
+
     unifiedvocabulary_totaloccurrencecounts=np.zeros((len(vocabulary),1))
-    unifiedvocabulary_documentcounts=np.zeros((len(vocabulary),1))
     unifiedvocabulary_meancounts=np.zeros((len(vocabulary),1))
     unifiedvocabulary_countvariances=np.zeros((len(vocabulary),1))
+
+    unifiedvocabulary_totaloccurrencecounts = np.bincount(text_in_indices, minlength=len(vocabulary))
+    unifiedvocabulary_meancounts = unifiedvocabulary_totaloccurrencecounts / len(text_in_indices)
+
+
+    highest_occurring_words = np.argsort(-1 * unifiedvocabulary_totaloccurrencecounts)
+    print(vocabulary[highest_occurring_words[0:20]])
 
 
     # Word pair occurance counting
