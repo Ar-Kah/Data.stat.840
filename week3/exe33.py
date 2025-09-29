@@ -4,7 +4,6 @@ import numpy as np
 import nltk
 import bs4
 import requests
-import re
 
 # import functions that are used a lot
 from exe32 import getbookcontents, getbooktext, cleanuptext, lematizetext, findwordindex
@@ -36,7 +35,6 @@ def compute_p_values(n_vocab, distanceoccurrences, absdistancemeans, absdistance
 
 def print_top_p_collections(wordstring, distanceoccurrences, absdistancepvalues, remainingvocabulary,
                             absdistancemeans, absdistancevariances, distancemeans, distancevariances, wordarray):
-
     # Find the chosen word and words that occurred with it at least 2 times
     mywordindex=findwordindex(wordstring, wordarray)
     if mywordindex==-1:
@@ -168,6 +166,7 @@ def print_N_lowestmeandistance(N, absdistancemeans, absdistancepvalues, distance
     for word_i, word_j, mean_d, p in top_N_pairs:
         print(f"{words[word_i]}, {words[word_j]}, absmeandistance: {mean_d:.2f}, p value: {p:f}")
 
+    print()
     # End of print_N_lowestmeandistance
     # -----------------------------------
 
@@ -194,6 +193,47 @@ def prune_text(vocabulary, highest_totaloccurrences_indeces):
             pruning_desition[index] = 1
 
     return pruning_desition
+
+def print_N_lowestmeandistance_word(word, N ,absdistancemeans, absdistancepvalues, distanceoccurrences, remainingvocabulary):
+
+    wordindex = findwordindex(word, remainingvocabulary)
+    if wordindex == -1:
+        print(f"Word {word} not found")
+        return
+
+    min_occurrences = 5
+
+    all_pairs_nn_an = []
+    words_tagged = nltk.pos_tag(remainingvocabulary)
+
+    tempindices = np.nonzero(distanceoccurrences[wordindex,:] >= min_occurrences)[1]
+    for otherwordindex in tempindices:
+
+        tag_of_word = words_tagged[wordindex][1][0]
+        tag_of_other_word = words_tagged[otherwordindex][1][0]
+
+        # Skip over wordparis that are not noun-noun or noun-adjective pairs
+        if (tag_of_other_word not in ['N', 'J']):
+            continue
+
+        if otherwordindex <= wordindex:   # skip duplicates
+            continue
+
+        mean_dist = absdistancemeans[wordindex, otherwordindex]
+        # convert sparse to scalar safely
+        p_value = absdistancepvalues[wordindex, otherwordindex]
+        all_pairs_nn_an.append((wordindex, otherwordindex, mean_dist, p_value))
+
+    # Sort by mean distance ascending
+    all_pairs_sorted = sorted(all_pairs_nn_an, key=lambda x: x[2])
+
+    # Take top N
+    top_N_pairs = all_pairs_sorted[:N]
+
+    for word_i, word_j, mean_d, p in top_N_pairs:
+        print(f"{remainingvocabulary[word_i]}, {remainingvocabulary[word_j]}, absmeandistance: {mean_d:.2f}, p value: {p:f}")
+
+    print()
 
 
 def main():
@@ -322,6 +362,8 @@ def main():
                         overallabsdistancevariance, overalldistancecount, absdistancepvalues)
 
     print_N_lowestmeandistance(N, absdistancemeans, absdistancepvalues, distanceoccurrences, remainingvocabulary)
+    word = 'dog'
+    print_N_lowestmeandistance_word(word, N, absdistancemeans, absdistancepvalues, distanceoccurrences, remainingvocabulary)
 
     print_top_p_collections('dog', distanceoccurrences, absdistancepvalues, remainingvocabulary,
                             absdistancemeans, absdistancevariances, distancemeans,
@@ -367,4 +409,33 @@ adjectives such as wild, dominant and primordial coupled with words
 like kill, beast and dog. In any case this fits well with the
 title of the book "Call of the wild". You would expect somthing
 like this in a book called like this
+"""
+
+"""
+dog, want, absmeandistance: 1.60, p value: 0.000047
+dog, outside, absmeandistance: 1.62, p value: 0.000240
+dog, southland, absmeandistance: 1.80, p value: 0.001655
+dog, less, absmeandistance: 2.83, p value: 0.001369
+dog, old, absmeandistance: 3.33, p value: 0.086447
+dog, manner, absmeandistance: 3.40, p value: 0.134452
+dog, many, absmeandistance: 3.46, p value: 0.015379
+dog, harness, absmeandistance: 3.57, p value: 0.036815
+dog, fourteen, absmeandistance: 3.62, p value: 0.096211
+dog, know, absmeandistance: 3.65, p value: 0.003116
+dog, husky, absmeandistance: 4.00, p value: 0.022696
+dog, leap, absmeandistance: 4.00, p value: 0.186497
+dog, spring, absmeandistance: 4.00, p value: 0.089890
+dog, strike, absmeandistance: 4.00, p value: 0.143495
+dog, mad, absmeandistance: 4.17, p value: 0.196592
+dog, mercedes, absmeandistance: 4.17, p value: 0.143193
+dog, wild, absmeandistance: 4.20, p value: 0.249361
+dog, work, absmeandistance: 4.25, p value: 0.048726
+dog, sol-leks, absmeandistance: 4.29, p value: 0.136981
+dog, kill, absmeandistance: 4.38, p value: 0.078532
+
+exercise 3.3 (d)
+dog noun-noun / noun adjective pairs with atleast 5 occurenses
+Like in c there are many words describing primitive stuff like
+want, kill, strike etc.
+Sounds like the book containes lots of action with dogs
 """
