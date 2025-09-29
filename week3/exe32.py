@@ -113,7 +113,7 @@ def main():
     nltk_text.concordance('monster')
     print()
     nltk_text.concordance('science')
-    print
+    print()
     nltk_text.concordance('horror')
     print()
     nltk_text.concordance('fear')

@@ -86,7 +86,6 @@ def tagtowordnet(postag):
 
 
 def main():
-
     website_url = "https://www.gutenberg.org/ebooks/37431"
     book_url = getbookcontents(website_url)
     bookpage_html = requests.get(book_url)

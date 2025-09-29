@@ -308,7 +308,6 @@ def main():
 
     print(np.squeeze(remainingvocabulary[remaining_highest_totaloccurrences_indices[0:100]]))
     print(np.squeeze(remainingvocabulary_totaloccurrencecounts[remaining_highest_totaloccurrences_indices[0:100]]))
-            
 
     # Word pair occurance counting
     # ------------------------------------------
