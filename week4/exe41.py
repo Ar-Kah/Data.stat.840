@@ -2,276 +2,125 @@ import re
 import requests
 import nltk
 import numpy as np
-import scipy
+from scipy.sparse import lil_matrix, csr_matrix
+from sklearn.preprocessing import normalize
+from sklearn.mixture import GaussianMixture
 
+# Ensure nltk resources are downloaded
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('wordnet')
+nltk.download('stopwords')
 
 def tagtowordnet(postag):
-    wordnettag=-1
     if postag[0]=='N':
-        wordnettag='n'
+        return 'n'
     elif postag[0]=='V':
-        wordnettag='v'
+        return 'v'
     elif postag[0]=='J':
-        wordnettag='a'
+        return 'a'
     elif postag[0]=='R':
-        wordnettag='r'
-    return(wordnettag)
-
-
+        return 'r'
+    return None
 
 def getbookparagraphs_from_rawtext(raw_text):
-    """
-    raw_text: the full ebook text as a single string (use response.text).
-    Returns a list of paragraph strings (no empty ones), with internal newlines preserved
-    until cleaning step.
-    """
-    # split into lines so we can find Gutenberg start/end markers reliably
-    book_lines = raw_text.splitlines()
-
+    lines = raw_text.splitlines()
     start_index = 0
-    end_index = len(book_lines)
-    for i, line in enumerate(book_lines):
+    end_index = len(lines)
+    for i, line in enumerate(lines):
         if "START OF THE PROJECT GUTENBERG EBOOK" in line:
             start_index = i + 1
         elif "END OF THE PROJECT GUTENBERG EBOOK" in line:
             end_index = i
             break
-
-    # join back to single string for paragraph-splitting
-    book_body = "\n".join(book_lines[start_index:end_index])
-
-    paragraphs = re.split(r'\n[ \n]*\n', book_body)
-
-    # strip and remove empties
-    paragraphs = [p.strip() for p in paragraphs if p.strip()]
-
+    body = "\n".join(lines[start_index:end_index])
+    paragraphs = [p.strip() for p in re.split(r'\n\s*\n', body) if p.strip()]
     return paragraphs
 
 def clean_paragraphs(paragraphs):
-    """
-    Collapse internal whitespace (including newlines) to single spaces,
-    strip punctuation-ish characters from words, return cleaned paragraph strings.
-    """
     cleaned = []
     for p in paragraphs:
-        # collapse any whitespace (tabs/newlines/multiple spaces) into a single space
         p = re.sub(r'\s+', ' ', p).strip()
-
-        # optional: more aggressive token-level cleanup
         words = p.split()
-        cleaned_words = [w.strip('"[]_*(){}.,:;?!\'“”') .lower() for w in words]
-
-        cleaned.append(" ".join(cleaned_words))
+        words = [w.strip('"[]_*(){}.,:;?!\'“”').lower() for w in words]
+        cleaned.append(words)
     return cleaned
 
-
-def text_processing(paragraphs: list):
-
-    nltk_paragraphs = []
-    for p in paragraphs:
-        tokenized_paragraph = nltk.word_tokenize(p)
-        nltk_textp = nltk.Text(tokenized_paragraph)
-        nltk_paragraphs.append(nltk_textp)
-        
-    return nltk_paragraphs
-
-
-
-def lemmatize_paragraph(tockenized_paragraph):
+def lemmatize_paragraph(paragraph):
     lemmatizer = nltk.stem.WordNetLemmatizer()
-
-    word_tag_tuples = nltk.pos_tag(tockenized_paragraph)
-
-    lemmatized_paragraph = []
-
-    for index in range(len(word_tag_tuples)):
-        # Lemmatize each word in the paragraph
-        word_to_lemmatize = word_tag_tuples[index][0]       # first elemtent of tuple is the word
-        wordnet_tag = tagtowordnet(word_tag_tuples[index][1])    # second element is the tag of the word
-
-        if wordnet_tag != -1:
-            lemmatized_word = lemmatizer.lemmatize(word_to_lemmatize, wordnet_tag)
+    pos_tags = nltk.pos_tag(paragraph)
+    lemmatized = []
+    for word, tag in pos_tags:
+        wn_tag = tagtowordnet(tag)
+        if wn_tag:
+            lemmatized.append(lemmatizer.lemmatize(word, wn_tag))
         else:
-            lemmatized_word = word_to_lemmatize
+            lemmatized.append(word)
+    return lemmatized
 
-        # Store the lemmatized words
-        lemmatized_paragraph.append(lemmatized_word)
+def prune_vocabulary(vocabulary, top_indices):
+    stopwords = set(nltk.corpus.stopwords.words('english'))
+    mask = np.ones(len(vocabulary), dtype=bool)
+    for i, word in enumerate(vocabulary):
+        if word in stopwords or len(word)<2 or len(word)>20:
+            mask[i] = False
+        elif i in top_indices[:max(1, len(vocabulary)//100)]:
+            mask[i] = False
+    return mask
 
-    return lemmatized_paragraph
-
-
-
-def remake_vocab_as_integers(paragraphs):
-    vocabularies = []
-    paragraphs_as_integers = []
-
-    for paragraph in paragraphs:
-        uniques, indeces = np.unique(paragraph, return_inverse=True)
-        vocabularies.append(uniques)
-        paragraphs_as_integers.append(indeces)
-        
-    return vocabularies, paragraphs_as_integers
-
-
-def calculate_tf_matrix(n_docs, n_vocab, paragraphs_as_indices):
+def build_tf_idf(paragraphs, vocabulary):
+    word_to_idx = {w:i for i, w in enumerate(vocabulary)}
+    n_docs = len(paragraphs)
+    n_vocab = len(vocabulary)
+    tf_matrix = lil_matrix((n_docs, n_vocab))
     
-    tf_matrix = scipy.sparse.lil_matrix((n_docs, n_vocab))
+    for doc_id, doc in enumerate(paragraphs):
+        indices = [word_to_idx[w] for w in doc if w in word_to_idx]
+        if indices:
+            counts = np.bincount(indices, minlength=n_vocab)
+            tf_matrix[doc_id,:] = counts
     
-    for index, paragraph in enumerate(paragraphs_as_indices):
-        # word is now in the for of a integer
-        count_of_words = len(paragraph)
-
-        if count_of_words == 0:
-            continue  # row stays all zeros
-
-        bins_of_occurrences = np.bincount(paragraph, minlength=n_vocab)
-        tf_values = bins_of_occurrences / count_of_words
-
-        # insert values into the matrix
-        tf_matrix[index, :] = tf_values
-
-    return tf_matrix
-
-
-def prune_text(vocabulary, highest_totaloccurrences_indeces ):
-    english_stopwords = nltk.corpus.stopwords.words('english')
-    pruning_desition = np.zeros((len(vocabulary), 1))
-
-    for index in range(len(vocabulary)):
-        if vocabulary[index] in english_stopwords:
-            pruning_desition[index] = 1
-
-        elif len(vocabulary[index]) < 2:
-            pruning_desition[index] = 1
-
-        elif len(vocabulary[index]) > 20:
-            pruning_desition[index] = 1
-
-        elif (index in highest_totaloccurrences_indeces[\
-            0:int(np.floor(len(vocabulary)*0.01))]):
-            pruning_desition[index] = 1
-
-        elif highest_totaloccurrences_indeces[index] < 4:
-            pruning_desition[index] = 1
-
-    return pruning_desition
-
+    df_vector = np.array((tf_matrix > 0).sum(axis=0)).flatten()
+    idf_vector = 1 + np.log((n_docs + 1) / (df_vector + 1))
+    tfidf_matrix = tf_matrix.multiply(idf_vector)
+    return csr_matrix(tfidf_matrix)
 
 def main():
-    """
-    I have used AI for debugging purposes in this file
-    """
     url = "https://www.gutenberg.org/cache/epub/55/pg55.txt"
     r = requests.get(url)
     raw_text = r.text
 
-    # get paragraphs
     paragraphs = getbookparagraphs_from_rawtext(raw_text)
-
     cleaned = clean_paragraphs(paragraphs)
+    lemmatized_paragraphs = [lemmatize_paragraph(p) for p in cleaned]
 
-    # Format paragraphs into nltk Text format
-    tokenized_paragrapths_nltk = text_processing(cleaned)
-
-    # Lemmatize tokenized paragraphs
-    print("lemmatizing words")
-    lemmatized_paragraphs = []
-    for tokenized_paragraph in tokenized_paragrapths_nltk:
-        lemmatized_paragraph = lemmatize_paragraph(tokenized_paragraph)
-        lemmatized_paragraphs.append(lemmatized_paragraph)
-    print()
-        
-
-    print("Finding unique words")
-    # Create vocabulary if each paragraph and recreate the original paragraph
-    # with the vocabulary indices
-    vocabularies, paragraphs_as_indices = remake_vocab_as_integers(lemmatized_paragraphs)
-    print()
-
-    # Make a unified vocabulary of the previously made individual paragraph vocabularies
-    temp_vocab = []
-    print("Making unified vocabulary")
-    n_docs = len(lemmatized_paragraphs)
-    for index in range(n_docs):
-        temp_vocab.extend(vocabularies[index])
-    print()
-
-    # Concatenate all of the words into a single array
-    concatenated_words = []
-    for p in paragraphs_as_indices:
-        concatenated_words.extend(p)
-
-    unified_vocabulary, text_in_indices = np.unique(temp_vocab, return_inverse=True)
-
-    n_vocab = len(unified_vocabulary)
-
-    # Word occurrences 
-    # ------------------------------------------
-
-    vocabulary_totaloccurrencecounts=np.zeros((n_vocab,1))
-    vocabulary_meancounts=np.zeros((n_vocab,1))
-    vocabulary_countvariances=np.zeros((n_vocab,1))
-
-    # vocabulary_totaloccurrencescounts is a variable that has stored the count of the
-    # word/index in the doccument (in this occation the book) so lets say the
-    # word "book" is in index "0" vocabulary_totaloccurrencescounts will return the
-    # occurence count of that word in index 0
-    vocabulary_totaloccurrencecounts = np.bincount(text_in_indices, minlength=n_vocab)
-    vocabulary_meancounts = vocabulary_totaloccurrencecounts / len(text_in_indices)
-
-    vocabulary_countvariances = (n_vocab - vocabulary_meancounts) ** 2
-
-    # highest_totaloccurrences_indices is a variable that has stored the word/index that
-    # occured the most in the document
-    highest_totaloccurrences_indices = np.argsort(-1 * vocabulary_totaloccurrencecounts) # multiply bu -1 to get the most frequent
-
-    # these lines of code will print the 100 most common words and the occurence counts
-    # print(np.squeeze(unified_vocabulary[highest_totaloccurrences_indices[0:100]]))
-    # print(np.squeeze(vocabulary_totaloccurrencecounts[highest_totaloccurrences_indices[0:100]]))
+    # Build vocabulary
+    all_words = [w for p in lemmatized_paragraphs for w in p]
+    vocab, inverse = np.unique(all_words, return_inverse=True)
     
-    # Word pruning
-    # -----------------------------------------
-    
-    print("Prune vocabulary\n")
-    pruning_decision = prune_text(unified_vocabulary, highest_totaloccurrences_indices)
+    counts = np.bincount(inverse)
+    top_indices = np.argsort(-counts)
 
-    remainingindices = np.where(pruning_decision==0)[0]
+    # Prune vocabulary
+    mask = prune_vocabulary(vocab, top_indices)
+    pruned_vocab = vocab[mask]
 
-    # Map old indices to new ones in the remaining vocabulary
-    old_to_new = -1 * np.ones(n_vocab, dtype=int)
-    for new_idx, old_idx in enumerate(remainingindices):
-        old_to_new[old_idx] = new_idx
+    # Build TF-IDF
+    pruned_paragraphs = [[w for w in p if w in pruned_vocab] for p in lemmatized_paragraphs]
+    tfidf_matrix = build_tf_idf(pruned_paragraphs, pruned_vocab)
 
-    remapped_text_in_indices = []
-    for paragraph in paragraphs_as_indices:   # original paragraphs as list of lists
-        new_paragraph = [old_to_new[i] for i in paragraph if old_to_new[i] != -1]
-        remapped_text_in_indices.append(new_paragraph)
+    # Normalize rows
+    X = normalize(tfidf_matrix, norm='l2', axis=1)
 
-    # Correct: slice vocabulary using remainingindices
-    remainingvocabulary = unified_vocabulary[remainingindices]
+    # Fit Gaussian Mixture
+    gmm = GaussianMixture(n_components=10, covariance_type='diag', max_iter=100, init_params='random')
+    gmm.fit(X.toarray())
 
-    n_remaining_vocab = len(remainingvocabulary)
-
-    remainingvocabulary_totaloccurrencecounts = vocabulary_totaloccurrencecounts[remainingindices]
-    remaining_highest_totaloccurrences_indices = np.argsort(-1 * remainingvocabulary_totaloccurrencecounts, axis=0)
-
-    print(np.squeeze(remainingvocabulary[remaining_highest_totaloccurrences_indices[0:100]]))
-    print(np.squeeze(remainingvocabulary_totaloccurrencecounts[remaining_highest_totaloccurrences_indices[0:100]]))
-
-    df_vector = np.ones(n_remaining_vocab, dtype=int)
-
-    for paragraph in remapped_text_in_indices:
-        unique_terms = np.unique(paragraph).astype(int)       # unique word indices in this doc
-        df_vector[unique_terms] += 1
-        
-    
-    tf_matrix = calculate_tf_matrix(n_docs, n_remaining_vocab, remapped_text_in_indices)
-    idf_vector = np.log(1 / df_vector) + 1
-
-    tfidf_matrix = tf_matrix.multiply(idf_vector)
-
-    print(tfidf_matrix)
-
+    # Print top words per cluster
+    for k in range(10):
+        top_features = np.argsort(-gmm.means_[k,:])[:20]
+        print(f"Cluster {k}: ", ' '.join(pruned_vocab[top_features]))
 
 if __name__ == "__main__":
     main()
+
