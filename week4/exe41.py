@@ -113,6 +113,23 @@ def remake_vocab_as_integers(paragraphs):
     return vocabularies, paragraphs_as_integers
 
 
+def calculate_tf_matrix(n_docs, n_vocab, paragraphs_as_indices):
+    
+    tf_matrix = scipy.sparse.lil_matrix((n_docs, n_vocab))
+    
+    for index, paragraph in enumerate(paragraphs_as_indices):
+        # word is now in the for of a integer
+        count_of_words = len(paragraph)
+        bins_of_occurrences = np.bincount(paragraph, minlength=n_vocab)
+        tf_values = bins_of_occurrences / count_of_words
+
+        # insert values into the matrix
+        tf_matrix[index, :] = tf_values
+
+    return tf_matrix
+
+
+
 def main():
     url = "https://www.gutenberg.org/cache/epub/55/pg55.txt"
     r = requests.get(url)
@@ -157,17 +174,20 @@ def main():
     unified_vocabulary, individual_vocabularies_as_indices = np.unique(temp_vocab, return_inverse=True)
 
     n_vocab = len(unified_vocabulary)
-    
-    tf_matrix = scipy.sparse.lil_matrix((n_docs, n_vocab))
-    
-    for index, paragraph in enumerate(paragraphs_as_indices):
-        # word is now in the for of a integer
-        count_of_words = len(paragraph)
-        bins_of_occurrences = np.bincount(paragraph, minlength=n_vocab)
-        tf_values = bins_of_occurrences / count_of_words
 
-        # insert values into the matrix
-        tf_matrix[index, :] = tf_values
+    df_vector = np.ones(n_vocab, dtype=int)
+
+    for paragraph in paragraphs_as_indices:
+        unique_terms = np.unique(paragraph)       # unique word indices in this doc
+        df_vector[unique_terms] += 1
+        
+    
+    tf_matrix = calculate_tf_matrix(n_docs, n_vocab, paragraphs_as_indices)
+    idf_vector = np.log(1 / df_vector) + 1
+
+    tfidf_matrix = tf_matrix.multiply(idf_vector)
+
+    print(tfidf_matrix)
 
 
 if __name__ == "__main__":
