@@ -120,6 +120,10 @@ def calculate_tf_matrix(n_docs, n_vocab, paragraphs_as_indices):
     for index, paragraph in enumerate(paragraphs_as_indices):
         # word is now in the for of a integer
         count_of_words = len(paragraph)
+
+        if count_of_words == 0:
+            continue  # row stays all zeros
+
         bins_of_occurrences = np.bincount(paragraph, minlength=n_vocab)
         tf_values = bins_of_occurrences / count_of_words
 
@@ -129,8 +133,34 @@ def calculate_tf_matrix(n_docs, n_vocab, paragraphs_as_indices):
     return tf_matrix
 
 
+def prune_text(vocabulary, highest_totaloccurrences_indeces ):
+    english_stopwords = nltk.corpus.stopwords.words('english')
+    pruning_desition = np.zeros((len(vocabulary), 1))
+
+    for index in range(len(vocabulary)):
+        if vocabulary[index] in english_stopwords:
+            pruning_desition[index] = 1
+
+        elif len(vocabulary[index]) < 2:
+            pruning_desition[index] = 1
+
+        elif len(vocabulary[index]) > 20:
+            pruning_desition[index] = 1
+
+        elif (index in highest_totaloccurrences_indeces[\
+            0:int(np.floor(len(vocabulary)*0.01))]):
+            pruning_desition[index] = 1
+
+        elif highest_totaloccurrences_indeces[index] < 4:
+            pruning_desition[index] = 1
+
+    return pruning_desition
+
 
 def main():
+    """
+    I have used AI for debugging purposes in this file
+    """
     url = "https://www.gutenberg.org/cache/epub/55/pg55.txt"
     r = requests.get(url)
     raw_text = r.text
@@ -171,18 +201,71 @@ def main():
     for p in paragraphs_as_indices:
         concatenated_words.extend(p)
 
-    unified_vocabulary, individual_vocabularies_as_indices = np.unique(temp_vocab, return_inverse=True)
+    unified_vocabulary, text_in_indices = np.unique(temp_vocab, return_inverse=True)
 
     n_vocab = len(unified_vocabulary)
 
-    df_vector = np.ones(n_vocab, dtype=int)
+    # Word occurrences 
+    # ------------------------------------------
 
-    for paragraph in paragraphs_as_indices:
-        unique_terms = np.unique(paragraph)       # unique word indices in this doc
+    vocabulary_totaloccurrencecounts=np.zeros((n_vocab,1))
+    vocabulary_meancounts=np.zeros((n_vocab,1))
+    vocabulary_countvariances=np.zeros((n_vocab,1))
+
+    # vocabulary_totaloccurrencescounts is a variable that has stored the count of the
+    # word/index in the doccument (in this occation the book) so lets say the
+    # word "book" is in index "0" vocabulary_totaloccurrencescounts will return the
+    # occurence count of that word in index 0
+    vocabulary_totaloccurrencecounts = np.bincount(text_in_indices, minlength=n_vocab)
+    vocabulary_meancounts = vocabulary_totaloccurrencecounts / len(text_in_indices)
+
+    vocabulary_countvariances = (n_vocab - vocabulary_meancounts) ** 2
+
+    # highest_totaloccurrences_indices is a variable that has stored the word/index that
+    # occured the most in the document
+    highest_totaloccurrences_indices = np.argsort(-1 * vocabulary_totaloccurrencecounts) # multiply bu -1 to get the most frequent
+
+    # these lines of code will print the 100 most common words and the occurence counts
+    # print(np.squeeze(unified_vocabulary[highest_totaloccurrences_indices[0:100]]))
+    # print(np.squeeze(vocabulary_totaloccurrencecounts[highest_totaloccurrences_indices[0:100]]))
+    
+    # Word pruning
+    # -----------------------------------------
+    
+    print("Prune vocabulary\n")
+    pruning_decision = prune_text(unified_vocabulary, highest_totaloccurrences_indices)
+
+    remainingindices = np.where(pruning_decision==0)[0]
+
+    # Map old indices to new ones in the remaining vocabulary
+    old_to_new = -1 * np.ones(n_vocab, dtype=int)
+    for new_idx, old_idx in enumerate(remainingindices):
+        old_to_new[old_idx] = new_idx
+
+    remapped_text_in_indices = []
+    for paragraph in paragraphs_as_indices:   # original paragraphs as list of lists
+        new_paragraph = [old_to_new[i] for i in paragraph if old_to_new[i] != -1]
+        remapped_text_in_indices.append(new_paragraph)
+
+    # Correct: slice vocabulary using remainingindices
+    remainingvocabulary = unified_vocabulary[remainingindices]
+
+    n_remaining_vocab = len(remainingvocabulary)
+
+    remainingvocabulary_totaloccurrencecounts = vocabulary_totaloccurrencecounts[remainingindices]
+    remaining_highest_totaloccurrences_indices = np.argsort(-1 * remainingvocabulary_totaloccurrencecounts, axis=0)
+
+    print(np.squeeze(remainingvocabulary[remaining_highest_totaloccurrences_indices[0:100]]))
+    print(np.squeeze(remainingvocabulary_totaloccurrencecounts[remaining_highest_totaloccurrences_indices[0:100]]))
+
+    df_vector = np.ones(n_remaining_vocab, dtype=int)
+
+    for paragraph in remapped_text_in_indices:
+        unique_terms = np.unique(paragraph).astype(int)       # unique word indices in this doc
         df_vector[unique_terms] += 1
         
     
-    tf_matrix = calculate_tf_matrix(n_docs, n_vocab, paragraphs_as_indices)
+    tf_matrix = calculate_tf_matrix(n_docs, n_remaining_vocab, remapped_text_in_indices)
     idf_vector = np.log(1 / df_vector) + 1
 
     tfidf_matrix = tf_matrix.multiply(idf_vector)
