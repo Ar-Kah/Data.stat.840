@@ -152,6 +152,7 @@ def main():
     print("Longest paragraph:")
     print()
     print(getlongest_paragraph(paragraphs))
+    print()
 
     cleaned_paragraphs = clean_paragraphs(paragraphs)
     lemmatized_paragraphs = [lemmatize_paragraph(p) for p in cleaned_paragraphs]
@@ -180,3 +181,32 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+    """
+OUTPUT
+python3 exe42.py 
+Longest paragraph:
+
+She left Dorothy alone and went back to the others. These she also led
+to rooms, and each one of them found himself lodged in a very pleasant
+part of the Palace. Of course this politeness was wasted on the
+Scarecrow; for when he found himself alone in his room he stood
+stupidly in one spot, just within the doorway, to wait till morning. It
+would not rest him to lie down, and he could not close his eyes; so he
+remained all night staring at a little spider which was weaving its web
+in a corner of the room, just as if it were not one of the most
+wonderful rooms in the world. The Tin Woodman lay down on his bed from
+force of habit, for he remembered when he was made of flesh; but not
+being able to sleep, he passed the night moving his joints up and down
+to make sure they kept in good working order. The Lion would have
+preferred a bed of dried leaves in the forest, and did not like being
+shut up in a room; but he had too much sense to let this worry him, so
+he sprang upon the bed and rolled himself up like a cat and purred
+himself asleep in a minute.
+
+Top 20 words: ask scarecrow oz lion woodman go come shall tin girl answer get witch great chapter see back little make heart
+Top 20 words: scarecrow come lion woodman oz go great make ask tin little witch one see could would get head back look
+Top 20 words: scarecrow lion ask oz woodman come go great tin little make witch see get one back girl could shall answer
+
+The top 20 words are very similar in in the different tfidf matrices, but the order differece a little
+    """
