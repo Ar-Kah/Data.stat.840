@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 import re
 import requests
 import nltk
@@ -78,7 +80,7 @@ def build_tf_idf(paragraphs, vocabulary):
         indices = [word_to_idx[w] for w in doc if w in word_to_idx]
         if indices:
             counts = np.bincount(indices, minlength=n_vocab)
-            tf_matrix[doc_id,:] = counts
+            tf_matrix[doc_id,:] = counts / len(doc)
     
     df_vector = np.array((tf_matrix > 0).sum(axis=0)).flatten()
     idf_vector = 1 + np.log((n_docs + 1) / (df_vector + 1))
@@ -119,7 +121,18 @@ def main():
     # Print top words per cluster
     for k in range(10):
         top_features = np.argsort(-gmm.means_[k,:])[:20]
-        print(f"Cluster {k}: ", ' '.join(pruned_vocab[top_features]))
+        print(f"Cluster {k+1}: ", ' '.join(pruned_vocab[top_features]))
+
+
+    probs = gmm.predict_proba(X.toarray())
+
+    for k in range(10):
+        best_doc_idx = np.argmax(probs[:, k])   # get the single index
+        best_paragraph = cleaned[best_doc_idx]  # directly use Python list
+        print(f"Cluster {k+1}:")
+        print(best_paragraph[:300], "...")      # first 300 chars
+        print()
+
 
 if __name__ == "__main__":
     main()
