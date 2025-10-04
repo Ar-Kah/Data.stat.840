@@ -143,6 +143,7 @@ def print_top_words(N, list_of_tfidfvectors, vocab):
         print(f"Top {N} words: {' '.join(top_words)}")
     
 def main():
+    # I have used AI for debuging purposses
     url = "https://www.gutenberg.org/cache/epub/55/pg55.txt"
     r = requests.get(url)
     raw_text = r.text

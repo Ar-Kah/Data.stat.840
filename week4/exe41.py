@@ -88,6 +88,7 @@ def build_tf_idf(paragraphs, vocabulary):
     return csr_matrix(tfidf_matrix)
 
 def main():
+    # I have used AI for debuging purposses
     url = "https://www.gutenberg.org/cache/epub/55/pg55.txt"
     r = requests.get(url)
     raw_text = r.text
@@ -122,7 +123,7 @@ def main():
     for k in range(10):
         top_features = np.argsort(-gmm.means_[k,:])[:20]
         print(f"Cluster {k+1}: ", ' '.join(pruned_vocab[top_features]))
-
+    print()
 
     probs = gmm.predict_proba(X.toarray())
 
@@ -130,7 +131,7 @@ def main():
         best_doc_idx = np.argmax(probs[:, k])   # get the single index
         best_paragraph = cleaned[best_doc_idx]  # directly use Python list
         print(f"Cluster {k+1}:")
-        print(best_paragraph[:300], "...")      # first 300 chars
+        print(' '.join(best_paragraph[:300]), "...")      # first 300 chars
         print()
 
 
