@@ -33,7 +33,7 @@ def open_and_clean_documents(documents: list):
 
             # Clean each word in the line: strip punctuation and lowercase
             words = stripped_line.split()
-            cleaned_words = [w.strip('"-[]_*(){}.,:;?!\'“”').lower() for w in words]
+            cleaned_words = [w.strip('"-<>[]_*(){}.,:;?!\'“”').lower() for w in words]
 
             # Reconstruct the cleaned line
             cleaned_line = ' '.join(cleaned_words)
@@ -97,13 +97,13 @@ def lemmatize_document(document):
             lemmatized.append(word)
     return lemmatized
 
-def build_tf_idf(paragraphs, vocabulary):
+def build_tf_idf(documents, vocabulary):
     word_to_idx = {w:i for i, w in enumerate(vocabulary)}
-    n_docs = len(paragraphs)
+    n_docs = len(documents)
     n_vocab = len(vocabulary)
     tf_matrix = scipy.sparse.lil_matrix((n_docs, n_vocab))
     
-    for doc_id, doc in enumerate(paragraphs):
+    for doc_id, doc in enumerate(documents):
         indices = [word_to_idx[w] for w in doc if w in word_to_idx]
         if indices:
             counts = np.bincount(indices, minlength=n_vocab)
@@ -133,8 +133,8 @@ def main():
 
     documents = get_files_from_dirs(dirs)
 
-    cleand_documents = open_and_clean_documents(documents)
-    lemmatized_documents = [lemmatize_document(d) for d in cleand_documents]
+    cleaned_documents = open_and_clean_documents(documents)
+    lemmatized_documents = [lemmatize_document(d) for d in cleaned_documents]
 
     all_words = [w for d in lemmatized_documents for w in d]
     vocab, inverse = np.unique(all_words, return_inverse=True)
@@ -145,12 +145,33 @@ def main():
     mask = prune_vocabulary(vocab, top_indices)
     pruned_vocab = vocab[mask]
 
-    pruned_paragraphs = [[w for w in p if w in pruned_vocab] for p in lemmatized_documents]
+    pruned_documents = [[w for w in p if w in pruned_vocab] for p in lemmatized_documents]
+    all_remaining_words = [w for d in pruned_documents for w in d]
+    remainingvocabulary = np.unique(all_remaining_words)
+
 
     # Build the length-normalized frequency TF part and smoother logarithmic inverse document
     # frequency for the IDF part
-    tfidf_vector = build_tf_idf(pruned_paragraphs, pruned_vocab)
-    print(tfidf_vector)
+    tfidf_matrix = build_tf_idf(pruned_documents, pruned_vocab)
     
+    dimensiontotals=np.squeeze(np.array(np.sum(tfidf_matrix,axis=0)))
+    highesttotals=np.argsort(-1*dimensiontotals)
+    Xsmall=tfidf_matrix[:,highesttotals[0:500]].todense()
+    # Compute 10 factors from LSA
+    n_low_dimensions=10
+    Uleft,D,UrightT=scipy.sparse.linalg.svds(Xsmall,k=n_low_dimensions)
+
+
+    topweights_indices=np.argsort(-1*np.abs(UrightT[9,:]))
+    print(remainingvocabulary[highesttotals[topweights_indices[0:10]]])
+    # Same for the next highest factor
+    topweights_indices=np.argsort(-1*np.abs(UrightT[8,:]))
+    print(remainingvocabulary[highesttotals[topweights_indices[0:10]]]) 
+    
+    topweights_indices=np.argsort(-1*np.abs(UrightT[7,:]))
+    print(remainingvocabulary[highesttotals[topweights_indices[0:10]]]) 
+
+    topweights_indices=np.argsort(-1*np.abs(UrightT[6,:]))
+    print(remainingvocabulary[highesttotals[topweights_indices[0:10]]]) 
 if __name__ == "__main__":
     main()
