@@ -126,6 +126,12 @@ def prune_vocabulary(vocabulary, top_indices):
     return mask
 
 
+def print_results(N, UrightT, remainingvocabulary, highesttotals):
+
+    for x in range(N):
+        topweights_indices=np.argsort(-1*np.abs(UrightT[x,:]))
+        print(remainingvocabulary[highesttotals[topweights_indices[0:10]]])
+
 def main():
     path = "/home/omakone3/Programming/Data.stat.840/week6/data/20news-bydate-train"
 
@@ -158,20 +164,50 @@ def main():
     highesttotals=np.argsort(-1*dimensiontotals)
     Xsmall=tfidf_matrix[:,highesttotals[0:500]].todense()
     # Compute 10 factors from LSA
-    n_low_dimensions=10
+    n_low_dimensions=15
     Uleft,D,UrightT=scipy.sparse.linalg.svds(Xsmall,k=n_low_dimensions)
 
 
-    topweights_indices=np.argsort(-1*np.abs(UrightT[9,:]))
-    print(remainingvocabulary[highesttotals[topweights_indices[0:10]]])
-    # Same for the next highest factor
-    topweights_indices=np.argsort(-1*np.abs(UrightT[8,:]))
-    print(remainingvocabulary[highesttotals[topweights_indices[0:10]]]) 
-    
-    topweights_indices=np.argsort(-1*np.abs(UrightT[7,:]))
-    print(remainingvocabulary[highesttotals[topweights_indices[0:10]]]) 
+    print_results(n_low_dimensions, UrightT, remainingvocabulary, highesttotals)
 
-    topweights_indices=np.argsort(-1*np.abs(UrightT[6,:]))
-    print(remainingvocabulary[highesttotals[topweights_indices[0:10]]]) 
+
 if __name__ == "__main__":
     main()
+
+"""
+exe6.1 (e)
+output:
+['stats' 'blah' 'individual' 'al' 'cub' 'tie' 'breaker' 'e-mail' 'record' 'advance']
+['blah' 'stats' 'group' 'individual' "let's" 'al' 'advance' 'e-mail' 'subject' 'cub']
+['jewish' 'kingman' 'stats' 'dave' 'cub' 'advance' 'e-mail' 'subject' 'email' 'address']
+['jewish' 'kingman' 'dave' 'cub' 'stats' 'dolven' 'advance' 'e-mail' 'subject' 'wonder']
+['dolven' 'doug' 'hall' 'yankee' 'tom' 'sign' 'jewish' 'e-mail' 'appreciate' 'stats']
+['state/maine' 'finals...who' 'lake' 'maine' 'roster' 'hall' 'ryan' 'college' 'luck' 'reply']
+['luck' 'jim' 'pitching' 'version' 'ticket' 'tin' 'x-newsreader' 'advantage' 'staff' 'address']
+['test' 'hello' 'message' 'become' 'ticket' 'push' 'wonder' 'different' 'dealer' 'comment']
+['appreciate' 'advance' 'captain' 'park' 'wonder' 'dan' 'kind' 'series' 'job' 'news']
+['advantage' 'hawk' 'luck' 'detroit' 'alomar' 'dog' 'beat' 'brian' 'round' 'champ']
+
+Some of the outputs seem to be talking about baseball atleast. But its not clear atleast from
+these word groups to really easily tell what the resulting factors are about.
+"""
+
+"""
+['sam' 'vesterman' 'nl' 'tin' 'x-newsreader' '1.1' 'charles' 'al' 'e-mail' 'version']
+['hello' 'message' 'o&o' 'tie' 'breaker' 'group' 'record' 'tin' 'x-newsreader' 'blah']
+['o&o' 'tie' 'breaker' 'record' 'cub' 'stats' 'tin' 'x-newsreader' '1.1' 'individual']
+['o&o' 'hello' 'tie' 'breaker' 'cub' 'record' 'advance' 'stats' 'tin' 'x-newsreader']
+['cub' 'advance' 'tie' 'blah' 'breaker' 'email' 'record' 'subject' 'stats' 'roster']
+['stats' 'blah' 'individual' 'al' 'cub' 'tie' 'breaker' 'e-mail' 'record' 'advance']
+['blah' 'stats' 'group' 'individual' "let's" 'al' 'advance' 'e-mail' 'subject' 'cub']
+['jewish' 'kingman' 'stats' 'dave' 'cub' 'advance' 'e-mail' 'subject' 'email' 'address']
+['jewish' 'kingman' 'dave' 'cub' 'stats' 'dolven' 'advance' 'e-mail' 'subject' 'wonder']
+['dolven' 'doug' 'hall' 'yankee' 'tom' 'sign' 'jewish' 'e-mail' 'appreciate' 'stats']
+['appreciate' 'advance' 'captain' 'park' 'wonder' 'dan' 'kind' 'series' 'job' 'news']
+['advantage' 'hawk' 'luck' 'detroit' 'alomar' 'dog' 'beat' 'brian' 'round' 'champ']
+['state/maine' 'finals...who' 'lake' 'maine' 'roster' 'hall' 'ryan' 'college' 'luck' 'reply']
+['luck' 'jim' 'pitching' 'version' 'ticket' 'tin' 'x-newsreader' 'advantage' 'staff' 'address']
+['test' 'hello' 'message' 'become' 'ticket' 'push' 'wonder' 'different' 'dealer' 'comment']
+
+Atleast the outputs didn't improve. There is a lot of stuff about emails for some reason.
+"""
