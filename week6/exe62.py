@@ -162,11 +162,11 @@ def plsa(document_to_word_matrix, n_topics, n_iterations):
     return(pi,psi,theta)
 
 
-def print_results(N, UrightT, remainingvocabulary, highesttotals):
+def print_results(N, theta, remainingvocabulary, highesttotals):
 
     for x in range(N):
-        topweights_indices=np.argsort(-1*np.abs(UrightT[x,:]))
-        print(remainingvocabulary[highesttotals[topweights_indices[0:10]]])
+        topweights_indices=np.argsort(-1*np.abs(theta[:,x]))
+        print(remainingvocabulary[highesttotals[topweights_indices[0:20]]])
 
 def main():
     path = "/home/omakone3/Programming/Data.stat.840/week6/data/20news-bydate-train"
@@ -205,15 +205,40 @@ def main():
     n_topics=10
     n_iterations=200
     pi,psi,theta=plsa(Xsmall, n_topics, n_iterations)
-    print(np.sum(psi*np.matlib.repmat(pi,n_topics,1),axis=1))
-    # Examine a factor (here the one with largest probability, factor 1)
-    print(theta[:,1])
-    # Words with largest absolute weights in the factor
-    topweights_indices=np.argsort(-1*np.abs(theta[:,1]))
-    print(remainingvocabulary[highesttotals[topweights_indices[0:20]]])
-    # Same for the next biggest factor (here factor 4)
-    topweights_indices=np.argsort(-1*np.abs(theta[:,4]))
-    print(remainingvocabulary[highesttotals[topweights_indices[0:20]]])
 
+    print_results(10, theta, remainingvocabulary, highesttotals)
 if __name__ == "__main__":
     main()
+
+    """
+['jewish' 'group' 'sox' 'advantage' 'expect' 'mind' 'kid' 'seat' 'white'
+ 'air' 'gear' 'paint' 'mets' "what's" 'auto' 'bring' 'exactly' 'tom'
+ 'originator' 'kevin']
+['oil' 'local' 'advance' 'michael' 'park' 'tiger' 'al' 'net' 'coverage'
+ 'pitching' 'tv' 'vesterman' 'york' 'wonder' 'key' 'abc' 'puck' 'penalty'
+ 'cop' 'paul']
+['x-newsreader' 'tin' 'version' '1.1' 'pen' 'phillies' 'montreal' 'april'
+ 'draft' 'gerald' 'philadelphia' 'flyer' 'defense' 'wagon' 'round'
+ 'anybody' 'winner' 'news' 'jeff' 'deal']
+['cub' 'appreciate' 'wave' 'rider' 'left' 'answer' 'foot' 'standard'
+ 'disclaimer' 'law' 'center' 'stick' 'person' 'steve' 'room' 'kill'
+ 'street' 'window' 'later' 'learn']
+['bmw' "let's" 'previous' 'rear' 'design' 'light' 'alan' 'vote' 'dodger'
+ 'finish' 'level' 'keith' 'effect' 'handle' 'convertible' 'mask'
+ 'straight' 'cannot' 'talent' 'apr']
+['luck' 'honda' 'model' 'experience' 'guess' 'idea' 'check' 'else' 'stuff'
+ 'jim' 'rid' 'richard' 'fact' 'european' 'ok' 'canadian' 'north' 'saw'
+ 'type' 'fine']
+['test' 'stats' 'insurance' 'money' 'hawk' 'company' 'devil' 'message'
+ 'jet' 'penguin' 'hello' 'subject' 'islander' 'save' 'manager'
+ 'individual' 'jack' 'gary' 'box' '91']
+['e-mail' 'mail' 'dealer' 'interested' 'owner' 'mile' 'helmet' 'area'
+ 'cost' 'address' 'email' 'andrew' 'figure' 'info' 'kind' 'hole' 'ticket'
+ 'cover' 'sale' 'saturn']
+['dave' 'record' 'dog' 'tie' 'leaf' 'detroit' 'david' 'captain' 'espn'
+ 'ice' 'throw' 'stupid' 'field' 'ottawa' 'eric' 'roger' 'ryan' 'lock'
+ 'lemieux' 'breaker']
+['sound' 'brave' 'nice' 'yankee' 'ball' 'smith' 'doug' 'hitter' 'pitcher'
+ 'hall' 'somebody' 'information' 'jay' 'alomar' 'lake' 'dolven' 'bat'
+ 'defensive' 'aaa' 'ron']
+    """
